@@ -447,15 +447,15 @@ function Contact() {
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#b9df88]">Company Details</p>
               <h3 className="mt-3 text-2xl font-black">Business Information</h3>
             </div>
-            <a className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#8f6235] px-5 font-black text-white transition hover:bg-[#744d29]" href="tel:+919999999999">
+            <a className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#8f6235] px-5 font-black text-white transition hover:bg-[#744d29]" href="tel:+918187869698">
               Call Sales Team <Phone className="size-4" />
             </a>
           </div>
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Info icon={Phone} label="Phone" value="+91 99999 99999" />
-            <Info icon={Mail} label="Email" value="sales@hanumanenterprises.com" />
-            <Info icon={MapPin} label="Location" value="India" />
-            <Info icon={Truck} label="Supply" value="Bulk orders for commercial customers" />
+            <Info icon={Phone} label="Cell" value="+91 81878 69698 / +91 89784 61866" />
+            <Info icon={Mail} label="Email" value="hanumanentp23@gmail.com" />
+            <Info icon={MapPin} label="Address" value="Kondakarla Village, Atchutapuram Mandal, Anakapalli District - 531033" />
+            <Info icon={BadgeCheck} label="GST" value="37CJTPJ8744A1ZU" />
           </div>
         </motion.div>
       </div>
@@ -486,6 +486,7 @@ function Footer() {
         <div>
           <h3 className="font-black">Company Details</h3>
           <ul className="mt-5 grid gap-3 text-sm text-white/64">
+            <li>GST: 37CJTPJ8744A1ZU</li>
             <li>Manufacturer and supplier of biomass fuel bricks</li>
             <li>Serving commercial and industrial fuel users</li>
             <li>Focused on wood waste recycling and renewable energy</li>
@@ -504,9 +505,11 @@ function Footer() {
         <div>
           <h3 className="font-black">Contact</h3>
           <ul className="mt-5 grid gap-3 text-sm text-white/64">
-            <li>Phone: +91 99999 99999</li>
-            <li>Email: sales@hanumanenterprises.com</li>
-            <li>Location: India</li>
+            <li>Cell: +91 81878 69698</li>
+            <li>Cell: +91 89784 61866</li>
+            <li>Email: hanumanentp23@gmail.com</li>
+            <li>Kondakarla Village, Atchutapuram Mandal</li>
+            <li>Anakapalli District - 531033</li>
             <li>Supply: Bulk commercial orders</li>
           </ul>
         </div>
