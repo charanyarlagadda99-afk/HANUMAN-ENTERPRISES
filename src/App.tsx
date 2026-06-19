@@ -1,3 +1,4 @@
+import { supabase } from "./lib/supabase";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -424,30 +425,177 @@ function Testimonials() {
 }
 
 function Contact() {
+  const [form, setForm] = useState({
+    name: "",
+    company: "",
+    phone: "",
+    email: "",
+    quantity: "",
+    message: "",
+  });
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMsg("");
+
+    // Client-side validation
+    if (!form.name.trim()) {
+      setErrorMsg("Name is required.");
+      return;
+    }
+    if (!form.phone.trim() || !/^[6-9]\d{9}$/.test(form.phone.trim())) {
+      setErrorMsg("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+
+    setStatus("loading");
+
+    try {
+      const { error } = await supabase.from("leads").insert([
+        {
+          name: form.name.trim(),
+          company: form.company.trim() || null,
+          phone: form.phone.trim(),
+          email: form.email.trim() || null,
+          quantity_kg: form.quantity ? parseInt(form.quantity) : null,
+          message: form.message.trim() || null,
+          source: "website_form",
+        },
+      ]);
+
+      if (error) throw error;
+
+      setStatus("success");
+      setForm({ name: "", company: "", phone: "", email: "", quantity: "", message: "" });
+    } catch (err: unknown) {
+      console.error(err);
+      setStatus("error");
+      setErrorMsg("Something went wrong. Please call or WhatsApp us directly.");
+    }
+  }
+
   return (
     <section id="contact" className="bg-[#fbfaf5] py-20 md:py-28">
       <div className="section grid gap-10">
         <motion.div {...fadeUp}>
           <SectionLabel>Contact Hanuman Enterprises</SectionLabel>
-          <h2 className="mt-4 text-3xl font-black tracking-normal md:text-5xl">Order Biomass Fuel Bricks for Your Business</h2>
-          <form className="mt-8 grid gap-4 md:grid-cols-2">
-            {["Name", "Company Name", "Phone Number", "Email Address"].map((field) => (
-              <input key={field} className="h-12 rounded-md border border-[#ded8c8] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15" placeholder={field} />
-            ))}
-            <input className="h-12 rounded-md border border-[#ded8c8] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15 md:col-span-2" placeholder="Monthly Fuel Requirement" />
-            <textarea className="min-h-32 rounded-md border border-[#ded8c8] bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15 md:col-span-2" placeholder="Tell us about your use case" />
-            <button type="button" className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#2f6d43] px-7 font-black text-white transition hover:-translate-y-0.5 hover:bg-[#245535] md:col-span-2">
-              Send Inquiry <Send className="size-4" />
-            </button>
-          </form>
+          <h2 className="mt-4 text-3xl font-black tracking-normal md:text-5xl">
+            Order Biomass Fuel Bricks for Your Business
+          </h2>
+
+          {status === "success" ? (
+            <div className="mt-8 rounded-lg border border-[#2f6d43]/30 bg-[#eaf3e8] p-6">
+              <div className="flex gap-3">
+                <Leaf className="size-6 shrink-0 text-[#2f6d43]" />
+                <div>
+                  <h3 className="font-black text-[#2f6d43]">Inquiry Received!</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#5f665f]">
+                    We'll contact you within 24 hours. For urgent orders, call{" "}
+                    <a href="tel:+918187869698" className="font-bold text-[#2f6d43] underline">
+                      +91 81878 69698
+                    </a>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setStatus("idle")}
+                className="mt-5 rounded-md bg-[#2f6d43] px-6 py-2 text-sm font-black text-white hover:bg-[#245535]"
+              >
+                Send Another Inquiry
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-8 grid gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Name"
+                className="h-12 rounded-md border border-[#ded8c8] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+              <input
+                type="text"
+                name="company"
+                value={form.company}
+                onChange={handleChange}
+                placeholder="Company Name"
+                className="h-12 rounded-md border border-[#ded8c8] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+              <input
+                type="tel"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                placeholder="Phone Number"
+                className="h-12 rounded-md border border-[#ded8c8] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="Email Address"
+                className="h-12 rounded-md border border-[#ded8c8] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+              <input
+                type="text"
+                name="quantity"
+                value={form.quantity}
+                onChange={handleChange}
+                placeholder="Monthly Fuel Requirement (kg)"
+                className="h-12 rounded-md border border-[#ded8c8] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15 md:col-span-2"
+              />
+              <textarea
+                name="message"
+                value={form.message}
+                onChange={handleChange}
+                placeholder="Tell us about your use case"
+                className="min-h-32 rounded-md border border-[#ded8c8] bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15 md:col-span-2"
+              />
+
+              {errorMsg && (
+                <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-700 md:col-span-2">
+                  {errorMsg}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#2f6d43] px-7 font-black text-white transition hover:-translate-y-0.5 hover:bg-[#245535] disabled:opacity-50 md:col-span-2"
+                disabled={status === "loading"}
+              >
+                {status === "loading" ? (
+                  <>
+                    <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    Send Inquiry <Send className="size-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
         </motion.div>
+
         <motion.div className="rounded-lg bg-[#26302b] p-7 text-white shadow-2xl shadow-[#1b261d]/14 md:p-8" {...fadeUp}>
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#b9df88]">Company Details</p>
               <h3 className="mt-3 text-2xl font-black">Business Information</h3>
             </div>
-            <a className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#8f6235] px-5 font-black text-white transition hover:bg-[#744d29]" href="tel:+918187869698">
+            <a
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#8f6235] px-5 font-black text-white transition hover:bg-[#744d29]"
+              href="tel:+918187869698"
+            >
               Call Sales Team <Phone className="size-4" />
             </a>
           </div>
