@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const heroImage = "/images/hero-biomass-production.png";
 const productImage = "/images/biomass-bricks-product.png";
@@ -116,6 +116,7 @@ function App() {
       {orderOpen && <OrderModal onClose={() => setOrderOpen(false)} />}
       <Testimonials />
       <Contact />
+      <Chatbot />
       <Footer />
     </main>
   );
@@ -1148,4 +1149,218 @@ function OrderModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+
+function Chatbot() {
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"menu" | "answer" | "contact">("menu");
+  const [messages, setMessages] = useState<Array<{ from: "bot" | "user"; text: string }>>([
+    {
+      from: "bot",
+      text: "👋 Hi! I'm Hanuman's assistant. How can I help you today?",
+    },
+  ]);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const faqs = [
+    {
+      q: "What are biomass fuel bricks?",
+      a: "Biomass fuel bricks are compressed blocks made from recycled wood waste — sawdust, shavings, and wood residues. They burn at high heat, last longer than firewood, and are eco-friendly with zero chemical additives.",
+    },
+    {
+      q: "What is the minimum order quantity?",
+      a: "Our minimum order is 100 kg. For trial orders (100–500 kg) pricing is ₹12/kg. Bulk orders of 1,000 kg and above get better rates. Click 'Order Now' to place a request.",
+    },
+    {
+      q: "What is the current price per kg?",
+      a: "Our pricing: ₹12/kg (100–500 kg) · ₹11/kg (500–1,000 kg) · ₹10/kg (1,000–5,000 kg) · Custom rate for 5,000+ kg. All prices ex-factory, Anakapalli. GST @5% extra.",
+    },
+    {
+      q: "Which businesses do you supply to?",
+      a: "We supply to hotels, restaurants, bakeries, industrial kitchens, food processing units, and commercial businesses across Andhra Pradesh. We handle bulk B2B orders regularly.",
+    },
+    {
+      q: "How do I place an order?",
+      a: "Click the 'Order Now' button on the website, fill in your details and required quantity — our team will contact you within 24 hours to confirm pricing, delivery, and payment.",
+    },
+    {
+      q: "Where are you located?",
+      a: "We are based at Kondakarla Village, Atchutapuram Mandal, Anakapalli District – 531033, Andhra Pradesh. GST: 37CJTPJ8744A1ZU.",
+    },
+    {
+      q: "Do you deliver to my location?",
+      a: "We supply across Andhra Pradesh and neighbouring regions. Delivery charges depend on your location. Mention your delivery address in the order form and our team will confirm transport cost.",
+    },
+  ];
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, step, open]);
+
+  function addMessage(from: "bot" | "user", text: string) {
+    setMessages((prev) => [...prev, { from, text }]);
+  }
+
+  function handleFAQ(faq: (typeof faqs)[0]) {
+    addMessage("user", faq.q);
+    setTimeout(() => {
+      addMessage("bot", faq.a);
+      setStep("answer");
+    }, 300);
+  }
+
+  function handleReset() {
+    setStep("menu");
+    addMessage("bot", "Is there anything else I can help you with?");
+  }
+
+  function handleContactStep() {
+    setStep("contact");
+    addMessage("bot", "No problem! You can reach our customer care team directly:");
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-[#2f6d43] text-white shadow-xl shadow-green-950/30 transition hover:scale-110 hover:bg-[#245535]"
+        aria-label="Open chat"
+      >
+        {open ? <X className="size-6" /> : <span className="text-2xl">💬</span>}
+        {!open && (
+          <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[#D4A017] text-[9px] font-black text-white">
+            1
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          className="fixed bottom-24 right-6 z-50 flex w-[340px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/20"
+          style={{ maxHeight: "520px" }}
+        >
+          <div className="flex items-center gap-3 bg-[#2f6d43] px-4 py-4">
+            <div className="flex size-9 items-center justify-center rounded-full bg-[#b9df88] text-lg font-black text-[#2f6d43]">
+              🌿
+            </div>
+            <div>
+              <p className="font-black text-white">Hanuman Assistant</p>
+              <p className="flex items-center gap-1 text-xs text-[#b9df88]">
+                <span className="size-2 rounded-full bg-[#b9df88] inline-block" />
+                Online — replies instantly
+              </p>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f9f8f4]">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-6 ${
+                    msg.from === "user"
+                      ? "rounded-br-sm bg-[#2f6d43] font-semibold text-white"
+                      : "rounded-bl-sm bg-white font-medium text-[#26302b] shadow-sm"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+
+          {step === "menu" && (
+            <div className="border-t border-[#ede8db] bg-white p-3 space-y-2">
+              <p className="text-xs font-black uppercase tracking-widest text-[#7a5a36] px-1">Choose a question</p>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {faqs.map((faq) => (
+                  <button
+                    key={faq.q}
+                    onClick={() => handleFAQ(faq)}
+                    className="w-full rounded-lg border border-[#e3ddce] bg-[#f4f2e9] px-3 py-2.5 text-left text-xs font-bold text-[#26302b] transition hover:border-[#2f6d43] hover:bg-[#eaf3e8]"
+                  >
+                    {faq.q}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleContactStep}
+                className="w-full rounded-lg border border-[#D4A017] bg-[#FFF8E1] px-3 py-2.5 text-left text-xs font-black text-[#8f6235] transition hover:bg-[#D4A017] hover:text-white"
+              >
+                📞 Speak to Customer Care
+              </button>
+            </div>
+          )}
+
+          {step === "answer" && (
+            <div className="border-t border-[#ede8db] bg-white p-3 space-y-2">
+              <button
+                onClick={handleReset}
+                className="w-full rounded-lg border border-[#e3ddce] bg-[#f4f2e9] px-3 py-2.5 text-xs font-black text-[#26302b] transition hover:bg-[#eaf3e8]"
+              >
+                ← Ask another question
+              </button>
+              <button
+                onClick={handleContactStep}
+                className="w-full rounded-lg border border-[#D4A017] bg-[#FFF8E1] px-3 py-2.5 text-xs font-black text-[#8f6235] transition hover:bg-[#D4A017] hover:text-white"
+              >
+                📞 Still need help? Contact us
+              </button>
+            </div>
+          )}
+
+          {step === "contact" && (
+            <div className="border-t border-[#ede8db] bg-white p-4 space-y-3">
+              <p className="text-xs font-black uppercase tracking-widest text-[#7a5a36]">Customer Care</p>
+              <a
+                href="tel:+918187869698"
+                className="flex items-center gap-3 rounded-xl border border-[#e3ddce] bg-[#f4f2e9] p-3 transition hover:border-[#2f6d43] hover:bg-[#eaf3e8]"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full bg-[#2f6d43] text-white">
+                  <Phone className="size-4" />
+                </span>
+                <div>
+                  <p className="text-xs font-black text-[#26302b]">Sales Line 1</p>
+                  <p className="text-sm font-black text-[#2f6d43]">+91 81878 69698</p>
+                </div>
+              </a>
+              <a
+                href="tel:+918978461866"
+                className="flex items-center gap-3 rounded-xl border border-[#e3ddce] bg-[#f4f2e9] p-3 transition hover:border-[#2f6d43] hover:bg-[#eaf3e8]"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full bg-[#2f6d43] text-white">
+                  <Phone className="size-4" />
+                </span>
+                <div>
+                  <p className="text-xs font-black text-[#26302b]">Sales Line 2</p>
+                  <p className="text-sm font-black text-[#2f6d43]">+91 89784 61866</p>
+                </div>
+              </a>
+              <a
+                href="mailto:hanumanentp23@gmail.com"
+                className="flex items-center gap-3 rounded-xl border border-[#e3ddce] bg-[#f4f2e9] p-3 transition hover:border-[#2f6d43] hover:bg-[#eaf3e8]"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full bg-[#8f6235] text-white">
+                  <Mail className="size-4" />
+                </span>
+                <div>
+                  <p className="text-xs font-black text-[#26302b]">Email Us</p>
+                  <p className="text-sm font-black text-[#8f6235]">hanumanentp23@gmail.com</p>
+                </div>
+              </a>
+              <button
+                onClick={handleReset}
+                className="w-full rounded-lg border border-[#e3ddce] bg-[#f4f2e9] px-3 py-2.5 text-xs font-black text-[#26302b] transition hover:bg-[#eaf3e8]"
+              >
+                ← Back to questions
+              </button>
+            </div>
+          )}
+        </motion.div>
+      )}
+    </>
+  );
+}
+
 export default App;
