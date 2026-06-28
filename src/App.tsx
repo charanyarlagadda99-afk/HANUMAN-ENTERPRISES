@@ -100,17 +100,20 @@ function sectionId(label: string) {
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
 
   return (
     <main className="overflow-hidden bg-[#fbfaf5] text-[#26302b]">
-      <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
-      <Hero />
+      <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} onOrderClick={() => setOrderOpen(true)} />
+      <Hero onOrderClick={() => setOrderOpen(true)} />
       <Story />
       <Benefits />
       <Process />
       <ProductShowcase />
+      <Pricing onOrderClick={() => setOrderOpen(true)} />
       <Industries />
       <Sustainability />
+      {orderOpen && <OrderModal onClose={() => setOrderOpen(false)} />}
       <Testimonials />
       <Contact />
       <Footer />
@@ -121,9 +124,11 @@ function App() {
 function Header({
   menuOpen,
   setMenuOpen,
+  onOrderClick,
 }: {
   menuOpen: boolean;
   setMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onOrderClick: () => void;
 }) {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/30 bg-[#fbfaf5]/88 shadow-sm backdrop-blur-xl">
@@ -148,12 +153,12 @@ function Header({
             </a>
           ))}
         </div>
-        <a
-          href="#contact"
+        <button
+          onClick={() => onOrderClick()}
           className="hidden rounded-md bg-[#2f6d43] px-5 py-3 text-sm font-black text-white shadow-lg shadow-green-950/15 transition hover:-translate-y-0.5 hover:bg-[#245535] lg:inline-flex"
         >
           Order Now
-        </a>
+        </button>
         <button
           className="inline-flex size-10 items-center justify-center rounded-md border border-[#d7d3c5] bg-white text-[#26302b] lg:hidden"
           onClick={() => setMenuOpen((value) => !value)}
@@ -182,7 +187,7 @@ function Header({
   );
 }
 
-function Hero() {
+function Hero({ onOrderClick }: { onOrderClick: () => void }) {
   return (
     <section id="home" className="relative min-h-[860px] pt-20 text-white md:min-h-[790px]">
       <img src={heroImage} alt="Biomass fuel brick production facility" className="absolute inset-0 h-full w-full object-cover" />
@@ -204,9 +209,12 @@ function Hero() {
             <a className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#8f6235] px-7 font-black text-white transition hover:-translate-y-0.5 hover:bg-[#744d29]" href="#contact">
               Contact Us <ArrowRight className="size-4" />
             </a>
-            <a className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-white/35 bg-white/10 px-7 font-black text-white backdrop-blur transition hover:bg-white hover:text-[#26302b]" href="#products">
+            <button
+              onClick={onOrderClick}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-white/35 bg-white/10 px-7 font-black text-white backdrop-blur transition hover:bg-white hover:text-[#26302b]"
+            >
               Order Now
-            </a>
+            </button>
           </div>
           <div className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4">
             {stats.map(([value, label]) => (
@@ -440,45 +448,36 @@ function Contact() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setErrorMsg("");
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setErrorMsg("");
 
-    // Client-side validation
-    if (!form.name.trim()) {
-      setErrorMsg("Name is required.");
-      return;
-    }
-    if (!form.phone.trim() || !/^[6-9]\d{9}$/.test(form.phone.trim())) {
-      setErrorMsg("Enter a valid 10-digit Indian mobile number.");
-      return;
-    }
-
-    setStatus("loading");
-
-    try {
-      const { error } = await supabase.from("leads").insert([
-        {
-          name: form.name.trim(),
-          company: form.company.trim() || null,
-          phone: form.phone.trim(),
-          email: form.email.trim() || null,
-          quantity_kg: form.quantity ? parseInt(form.quantity) : null,
-          message: form.message.trim() || null,
-          source: "website_form",
-        },
-      ]);
-
-      if (error) throw error;
-
-      setStatus("success");
-      setForm({ name: "", company: "", phone: "", email: "", quantity: "", message: "" });
-    } catch (err: unknown) {
-      console.error(err);
-      setStatus("error");
-      setErrorMsg("Something went wrong. Please call or WhatsApp us directly.");
-    }
+  if (!form.name.trim()) {
+    setErrorMsg("Name is required.");
+    return;
   }
+  if (!form.phone.trim() || !/^[6-9]\d{9}$/.test(form.phone.trim())) {
+    setErrorMsg("Enter a valid 10-digit Indian mobile number.");
+    return;
+  }
+
+  setStatus("loading");
+
+  try {
+    const res = await fetch("/api/inquiry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, type: "inquiry" }),
+    });
+
+    if (!res.ok) throw new Error("Failed");
+    setStatus("success");
+    setForm({ name: "", company: "", phone: "", email: "", quantity: "", message: "" });
+  } catch {
+    setStatus("error");
+    setErrorMsg("Something went wrong. Please call or WhatsApp us directly.");
+  }
+}
 
   return (
     <section id="contact" className="bg-[#fbfaf5] py-20 md:py-28">
@@ -707,4 +706,446 @@ function Info({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
   );
 }
 
+function Pricing({ onOrderClick }: { onOrderClick: () => void }) {
+  const tiers = [
+    {
+      qty: "100 – 500 kg",
+      price: "₹12",
+      per: "per kg",
+      total: "₹1,200 – ₹6,000",
+      tag: "Trial Order",
+      tagColor: "bg-[#eaf3e8] text-[#2f6d43]",
+      highlight: false,
+    },
+    {
+      qty: "500 – 1,000 kg",
+      price: "₹11",
+      per: "per kg",
+      total: "₹5,500 – ₹11,000",
+      tag: "Most Popular",
+      tagColor: "bg-[#D4A017] text-white",
+      highlight: true,
+    },
+    {
+      qty: "1,000 – 5,000 kg",
+      price: "₹10",
+      per: "per kg",
+      total: "₹10,000 – ₹50,000",
+      tag: "Bulk Saver",
+      tagColor: "bg-[#eaf3e8] text-[#2f6d43]",
+      highlight: false,
+    },
+    {
+      qty: "5,000+ kg",
+      price: "Custom",
+      per: "negotiated rate",
+      total: "Best price guaranteed",
+      tag: "Enterprise",
+      tagColor: "bg-[#26302b] text-white",
+      highlight: false,
+    },
+  ];
+
+  return (
+    <section id="pricing" className="bg-[#f4f2e9] py-20 md:py-28">
+      <SectionHeading
+        label="Transparent Pricing"
+        title="Bulk Pricing for Commercial Buyers"
+      />
+      <p className="section mt-4 text-center text-[#5f665f]">
+        All prices are ex-factory, Kondakarla Village, Anakapalli. GST @5% (HSN 4401) extra.
+        Delivery charges applicable based on location.
+      </p>
+
+      <div className="section mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        {tiers.map((tier) => (
+          <motion.div
+            key={tier.qty}
+            className={`relative rounded-xl border p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${
+              tier.highlight
+                ? "border-[#D4A017] bg-[#26302b] text-white shadow-lg"
+                : "border-[#e3ddce] bg-white"
+            }`}
+            {...fadeUp}
+          >
+            {/* Tag */}
+            <span className={`inline-block rounded-full px-3 py-1 text-xs font-black ${tier.tagColor}`}>
+              {tier.tag}
+            </span>
+
+            {/* Price */}
+            <div className="mt-5">
+              <span className={`text-5xl font-black ${tier.highlight ? "text-[#D4A017]" : "text-[#26302b]"}`}>
+                {tier.price}
+              </span>
+              {tier.price !== "Custom" && (
+                <span className={`ml-1 text-sm font-bold ${tier.highlight ? "text-white/70" : "text-[#60665f]"}`}>
+                  {tier.per}
+                </span>
+              )}
+            </div>
+
+            {/* Quantity */}
+            <p className={`mt-3 text-sm font-black uppercase tracking-widest ${tier.highlight ? "text-white/60" : "text-[#7a5a36]"}`}>
+              {tier.qty}
+            </p>
+
+            {/* Total */}
+            <p className={`mt-2 text-sm font-semibold ${tier.highlight ? "text-white/80" : "text-[#5f665f]"}`}>
+              Est. total: {tier.total}
+            </p>
+
+            <div className={`my-5 border-t ${tier.highlight ? "border-white/15" : "border-[#ede8db]"}`} />
+
+            {/* Features */}
+            {[
+              "Wood waste biomass bricks",
+              "Consistent heat output",
+              "Bulk packaging included",
+              tier.qty === "5,000+ kg" ? "Dedicated account manager" : "Standard delivery",
+            ].map((f) => (
+              <div key={f} className="flex items-center gap-2 mb-2">
+                <span className={`text-sm font-bold ${tier.highlight ? "text-[#b9df88]" : "text-[#2f6d43]"}`}>✓</span>
+                <span className={`text-sm ${tier.highlight ? "text-white/80" : "text-[#5f665f]"}`}>{f}</span>
+              </div>
+            ))}
+
+            <button
+              onClick={onOrderClick}
+              className={`mt-5 w-full rounded-lg py-3 text-sm font-black transition hover:-translate-y-0.5 ${
+                tier.highlight
+                  ? "bg-[#D4A017] text-white hover:bg-[#b8880f]"
+                  : "bg-[#2f6d43] text-white hover:bg-[#245535]"
+              }`}
+            >
+              {tier.price === "Custom" ? "Get Custom Quote" : "Order Now"}
+            </button>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Disclaimer */}
+      <div className="section mt-8 rounded-xl border border-[#e3ddce] bg-white p-5 text-center">
+        <p className="text-sm text-[#60665f]">
+          <span className="font-black text-[#2f6d43]">Note: </span>
+          Prices are indicative and subject to change based on raw material availability and transport distance.
+          Final pricing confirmed upon order placement. Minimum order: 100 kg.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+
+function OrderModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    company: "",
+    customer_type: "",
+    quantity: "",
+    delivery_location: "",
+    message: "",
+  });
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMsg("");
+
+    if (!form.name.trim()) { setErrorMsg("Name is required."); return; }
+    if (!form.phone.trim() || !/^[6-9]\d{9}$/.test(form.phone.trim())) {
+      setErrorMsg("Enter a valid 10-digit Indian mobile number."); return;
+    }
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setErrorMsg("Valid email is required — we'll send your confirmation here."); return;
+    }
+    if (!form.customer_type) { setErrorMsg("Please select your business type."); return; }
+    if (!form.quantity.trim()) { setErrorMsg("Please enter your required quantity."); return; }
+
+    setStatus("loading");
+
+    try {
+      const res = await fetch("/api/inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, type: "order" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setStatus("success");
+    } catch {
+      setStatus("error");
+      setErrorMsg("Something went wrong. Please call us directly at +91 81878 69698.");
+    }
+  }
+
+  // Close on backdrop click
+  function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      onClick={handleBackdrop}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl"
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl bg-[#2f6d43] px-6 py-5">
+          <div>
+            <h2 className="text-xl font-black text-white">Place Your Order</h2>
+            <p className="mt-0.5 text-sm text-[#b9df88]">
+              Fill details — our team contacts you within 24 hours
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex size-9 items-center justify-center rounded-full bg-white/20 text-white transition hover:bg-white/30"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {status === "success" ? (
+          <div className="flex flex-col items-center p-10 text-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-[#eaf3e8]">
+              <BadgeCheck className="size-8 text-[#2f6d43]" />
+            </div>
+            <h3 className="mt-5 text-2xl font-black text-[#26302b]">Order Request Received!</h3>
+            <p className="mt-3 leading-7 text-[#5f665f]">
+              Thank you for your order. We've sent a confirmation to{" "}
+              <span className="font-black text-[#2f6d43]">{form.email}</span>.
+              Our team will contact you within <strong>24 hours</strong> to confirm
+              pricing, delivery, and payment details.
+            </p>
+            <div className="mt-6 w-full rounded-xl bg-[#f4f2e9] p-4 text-left">
+              <p className="text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                For urgent orders
+              </p>
+              <a
+                href="tel:+918187869698"
+                className="mt-2 flex items-center gap-2 font-black text-[#2f6d43]"
+              >
+                <Phone className="size-4" /> +91 81878 69698
+              </a>
+              <a
+                href="tel:+918978461866"
+                className="mt-1 flex items-center gap-2 font-black text-[#2f6d43]"
+              >
+                <Phone className="size-4" /> +91 89784 61866
+              </a>
+            </div>
+            <button
+              onClick={onClose}
+              className="mt-6 w-full rounded-xl bg-[#2f6d43] py-3 font-black text-white hover:bg-[#245535]"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="grid gap-4 p-6">
+
+            {/* Name */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Full Name *
+              </label>
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Your full name"
+                className="h-12 w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Phone Number * (10 digits)
+              </label>
+              <input
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                type="tel"
+                maxLength={10}
+                placeholder="9XXXXXXXXX"
+                className="h-12 w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Email Address * (confirmation sent here)
+              </label>
+              <input
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                type="email"
+                placeholder="you@company.com"
+                className="h-12 w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+            </div>
+
+            {/* Company */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Business / Company Name
+              </label>
+              <input
+                name="company"
+                value={form.company}
+                onChange={handleChange}
+                placeholder="Hotel name, bakery name, etc."
+                className="h-12 w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+            </div>
+
+            {/* Business Type */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Business Type *
+              </label>
+              <select
+                name="customer_type"
+                value={form.customer_type}
+                onChange={handleChange}
+                className="h-12 w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              >
+                <option value="">Select your business type</option>
+                <option value="hotel">Hotel / Resort</option>
+                <option value="restaurant">Restaurant / Cafe</option>
+                <option value="bakery">Bakery / Food Processing</option>
+                <option value="industrial">Industrial Kitchen</option>
+                <option value="other">Other Commercial Business</option>
+              </select>
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Required Quantity (kg) *
+              </label>
+              <input
+                name="quantity"
+                value={form.quantity}
+                onChange={handleChange}
+                type="number"
+                min="100"
+                placeholder="Minimum 100 kg"
+                className="h-12 w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+              {/* Price estimate */}
+              {form.quantity && parseInt(form.quantity) >= 100 && (
+                <p className="mt-1.5 text-xs font-bold text-[#2f6d43]">
+                  Estimated:{" "}
+                  {parseInt(form.quantity) >= 5000
+                    ? "Custom pricing — our team will contact you"
+                    : `₹${(
+                        parseInt(form.quantity) *
+                        (parseInt(form.quantity) >= 1000 ? 10 : parseInt(form.quantity) >= 500 ? 11 : 12)
+                      ).toLocaleString("en-IN")} (excl. GST & delivery)`}
+                </p>
+              )}
+            </div>
+
+            {/* Delivery Location */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Delivery Location
+              </label>
+              <input
+                name="delivery_location"
+                value={form.delivery_location}
+                onChange={handleChange}
+                placeholder="City, District, State"
+                className="h-12 w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+            </div>
+
+            {/* Message */}
+            <div>
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-widest text-[#7a5a36]">
+                Additional Requirements
+              </label>
+              <textarea
+                name="message"
+                value={form.message}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Frequency of orders, special packaging, any other requirements..."
+                className="w-full rounded-lg border border-[#ded8c8] bg-[#fbfaf5] px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#2f6d43] focus:ring-2 focus:ring-[#2f6d43]/15"
+              />
+            </div>
+
+            {errorMsg && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {errorMsg}
+              </div>
+            )}
+
+            {/* Info box */}
+            <div className="rounded-lg bg-[#eaf3e8] p-4">
+              <p className="text-xs font-black uppercase tracking-widest text-[#2f6d43]">
+                What happens next?
+              </p>
+              <ul className="mt-2 space-y-1">
+                {[
+                  "You receive a confirmation email immediately",
+                  "Our team calls you within 24 hours",
+                  "Pricing, delivery & payment confirmed",
+                  "Order dispatched from Anakapalli",
+                ].map((step, i) => (
+                  <li key={step} className="flex items-start gap-2 text-xs text-[#5f665f]">
+                    <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-[#2f6d43] text-[10px] font-black text-white">
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <button
+              type="submit"
+              disabled={status === "loading"}
+              className="flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-[#2f6d43] py-4 font-black text-white transition hover:bg-[#245535] disabled:opacity-60"
+            >
+              {status === "loading" ? (
+                <>
+                  <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Placing Order...
+                </>
+              ) : (
+                <>Place Order Request <ArrowRight className="size-4" /></>
+              )}
+            </button>
+
+            <p className="text-center text-xs text-[#9a9e97]">
+              No payment required now. Our team confirms everything before dispatch.
+            </p>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+}
 export default App;
