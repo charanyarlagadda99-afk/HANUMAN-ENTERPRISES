@@ -22,6 +22,45 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function(){
+        try {
+          const setDefaultUserPlan = () => {
+            try {
+              const wrap = (obj) => {
+                if (!obj || obj.__configCatPatched) return;
+                obj.__configCatPatched = true;
+                if (typeof obj.getValue === 'function') {
+                  const orig = obj.getValue.bind(obj);
+                  obj.getValue = function(key, defaultValue, user, ...rest){
+                    if (!user) user = { identifier: 'anon', custom: { plan: 'free' } };
+                    else if (user && !user.custom) user.custom = { plan: 'free' };
+                    else if (user && user.custom && user.custom.plan === undefined) user.custom.plan = 'free';
+                    return orig(key, defaultValue, user, ...rest);
+                  };
+                }
+              };
+
+              if (window.configcat) wrap(window.configcat);
+              if (window.ConfigCatClient) wrap(window.ConfigCatClient);
+              if (window.configcatClient) wrap(window.configcatClient);
+              if (window.ConfigCat && window.ConfigCat.prototype) wrap(window.ConfigCat.prototype);
+            } catch (e) {
+              // swallow errors
+            }
+          };
+
+          setDefaultUserPlan();
+          if (document.readyState === 'loading') {
+            window.addEventListener('load', setDefaultUserPlan);
+          } else {
+            setTimeout(setDefaultUserPlan, 0);
+          }
+        } catch (e) {
+          // ignore
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
