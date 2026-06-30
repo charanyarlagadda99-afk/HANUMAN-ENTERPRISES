@@ -14,13 +14,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { name, phone, email, company, quantity, message, type, delivery_location } = req.body;
+  const { name, phone, email, company, quantity, message, type, delivery_location, customer_type } = req.body;
 
   if (!name?.trim() || !phone?.trim()) {
     return res.status(400).json({ error: "Name and phone are required" });
   }
 
-  // Save to Supabase
+  const isOrder = type === "order";
+
+  // Save to Supabase leads table for all form submissions
   const { error: dbError } = await supabase.from("leads").insert([
     {
       name: name.trim(),
@@ -33,16 +35,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : delivery_location
         ? `Delivery location: ${delivery_location}`
         : null,
-      source: type === "order" ? "order_now" : "website_form",
+      source: isOrder ? "order_now" : "website_form",
     },
   ]);
 
   if (dbError) {
-    console.error("Supabase error:", dbError);
+    console.error("Supabase leads error:", dbError);
     return res.status(500).json({ error: "Database error" });
   }
 
-  const isOrder = type === "order";
+  // Save to orders table for order requests only
+  if (isOrder) {
+    const { error: orderDbError } = await supabase.from("orders").insert([
+      {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email?.trim() || null,
+        company: company?.trim() || null,
+        quantity_kg: quantity ? parseInt(quantity) : null,
+        customer_type: customer_type?.trim() || null,
+        delivery_location: delivery_location?.trim() || null,
+        message: message?.trim() || null,
+        source: "order_now",
+      },
+    ]);
+
+    if (orderDbError) {
+      console.error("Supabase orders error:", orderDbError);
+      return res.status(500).json({ error: "Database error" });
+    }
+  }
 
   // Email to OWNER
   await resend.emails.send({

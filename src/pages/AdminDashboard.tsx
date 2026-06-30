@@ -20,6 +20,20 @@ type Lead = {
   created_at: string;
 };
 
+type Order = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  company: string | null;
+  quantity_kg: number | null;
+  customer_type: string | null;
+  delivery_location: string | null;
+  message: string | null;
+  source: string | null;
+  created_at: string;
+};
+
 const STATUS_COLORS: Record<Lead["status"], string> = {
   new:       "bg-blue-100 text-blue-700",
   contacted: "bg-yellow-100 text-yellow-700",
@@ -30,6 +44,7 @@ const STATUS_COLORS: Record<Lead["status"], string> = {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | Lead["status"]>("all");
   const [updating, setUpdating] = useState<string | null>(null);
@@ -43,17 +58,48 @@ export default function AdminDashboard() {
 
   // Fetch leads
   async function fetchLeads() {
-    setLoading(true);
     const { data, error } = await supabase
       .from("leads")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (!error && data) setLeads(data as Lead[]);
-    setLoading(false);
   }
 
-  useEffect(() => { fetchLeads(); }, []);
+  // Fetch orders
+  async function fetchOrders() {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) setOrders(data as Order[]);
+  }
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchLeads(), fetchOrders()]);
+      setLoading(false);
+    };
+
+    loadData();
+
+    const channel = supabase
+      .channel("dashboard-orders")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload) => {
+          setOrders((prev) => [payload.new as Order, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Update status
   async function updateStatus(id: string, status: Lead["status"]) {
@@ -113,7 +159,7 @@ export default function AdminDashboard() {
             </span>
             <div>
               <p className="font-black text-[#26302b]">Hanuman Enterprises</p>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#7a5a36]">Leads Dashboard</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#7a5a36]">Leads & Orders Dashboard</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -146,7 +192,7 @@ export default function AdminDashboard() {
           {[
             { label: "Total Leads",  value: stats.total,     icon: Users,       color: "bg-[#26302b] text-white" },
             { label: "New",          value: stats.new,        icon: Clock,       color: "bg-blue-600 text-white" },
-            { label: "Contacted",    value: stats.contacted,  icon: Phone,       color: "bg-yellow-500 text-white" },
+            { label: "Orders",       value: orders.length,    icon: Package,     color: "bg-[#8f6235] text-white" },
             { label: "Converted",    value: stats.converted,  icon: TrendingUp,  color: "bg-[#2f6d43] text-white" },
           ].map((s) => (
             <div key={s.label} className="rounded-xl bg-white p-5 shadow-sm">
@@ -287,9 +333,66 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        <div className="mt-8 rounded-xl border border-[#e3ddce] bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-widest text-[#2f6d43]">Recent Orders</p>
+              <h3 className="mt-1 text-xl font-black text-[#26302b]">Order Now form submissions</h3>
+            </div>
+            <span className="rounded-full bg-[#eaf3e8] px-3 py-1 text-xs font-black text-[#2f6d43]">
+              {orders.length} total
+            </span>
+          </div>
+
+          {orders.length === 0 ? (
+            <div className="mt-6 rounded-lg border border-dashed border-[#ded8c8] bg-[#fbfaf5] py-10 text-center text-[#60665f]">
+              No orders yet.
+            </div>
+          ) : (
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-[#e3ddce] bg-[#f4f2e9]">
+                  <tr>
+                    {['Customer','Company','Phone / Email','Quantity','Delivery','Business Type','Date'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-[#60665f]">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f0ece0]">
+                  {orders.map((order) => (
+                    <tr key={order.id} className="hover:bg-[#fbfaf5]">
+                      <td className="px-4 py-3">
+                        <p className="font-black text-[#26302b]">{order.name}</p>
+                        {order.source && <p className="mt-0.5 text-xs text-[#9a9e97]">{order.source}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-[#5f665f]">{order.company ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <a href={`tel:${order.phone}`} className="font-semibold text-[#2f6d43] hover:underline">{order.phone}</a>
+                        {order.email && (
+                          <a href={`mailto:${order.email}`} className="mt-1 block text-xs text-[#60665f] hover:underline">
+                            {order.email}
+                          </a>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-[#5f665f]">{order.quantity_kg ? `${order.quantity_kg} kg` : '—'}</td>
+                      <td className="px-4 py-3 text-[#5f665f]">{order.delivery_location ?? '—'}</td>
+                      <td className="px-4 py-3 text-[#5f665f]">{order.customer_type ?? '—'}</td>
+                      <td className="px-4 py-3 text-xs text-[#9a9e97]">
+                        {new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         <p className="mt-4 text-xs text-[#9a9e97]">
           <BadgeCheck className="mr-1 inline size-3" />
-          Showing {filtered.length} of {leads.length} leads · Secured with Supabase RLS
+          Showing {filtered.length} of {leads.length} leads · {orders.length} orders · Secured with Supabase RLS
         </p>
       </main>
     </div>
